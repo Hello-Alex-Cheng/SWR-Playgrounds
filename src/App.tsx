@@ -1,3 +1,4 @@
+import './App.css'
 import { useState, Suspense } from 'react'
 
 import Basic from './pages/basic'
@@ -14,9 +15,10 @@ import SwrSubscription from './pages/swrSubscription'
 function App() {
 
   return (
-    <> 
-      <Basic />
-    </>
+    <div> 
+      {/* <Basic /> */}
+      <PerfRequest />
+    </div>
   )
 }
 
