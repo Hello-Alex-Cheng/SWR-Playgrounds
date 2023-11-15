@@ -875,38 +875,83 @@ trigger(newTodo, {
 ```
 
 ## 预请求
-预加载数据可以极大地改善用户体验。如果你知道某个资源稍后将在应用程序被使用，那么你可以使用新的 preload API 提前开始请求它
+预加载数据可以极大地改善用户体验。如果你知道某个资源稍后将在应用程序被使用，那么你可以使用新的 preload API 提前开始请求它。
+
+需要注意的是，SWR 的预请求功能并不会直接将预请求的数据存储在 SWR 的缓存对象中。预请求只是在后台发起请求，以获取数据并缓存在浏览器的 HTTP 缓存中。这样做是为了确保当实际使用该数据的时候，可以从缓存中获取，以提高性能。
 
 ```js
-import React from 'react'
+import React, { useEffect, useState } from 'react'
 import useSWR, { preload, useSWRConfig } from 'swr'
 
+const apiKey = 'https://jsonplaceholder.typicode.com/posts/'
+
 const fetcher = (url) => fetch(url).then((res) => res.json())
-preload('https://jsonplaceholder.typicode.com/posts/', fetcher)
 
-const PreloadDemo = () => {
-	const { cache } = useSWRConfig()
+const Child = ({prefetchData}: {prefetchData: Array<any>}) => {
 
-	const { data, isValidating } = useSWR('https://jsonplaceholder.typicode.com/posts/', fetcher)
+	const { data, isValidating } = useSWR(apiKey, fetcher, {
+		revalidateOnMount: false,
+		revalidateOnFocus: false,
+    		fallbackData: prefetchData
+	})
   
 	if (isValidating) {
-		return (
-			<div>Loading....</div>
-		)
+	  return (
+	    <div>Loading....</div>
+	  )
 	}
 
   return (
     <div>
-			{
-				data?.map(i => (
-					<p>{i.title}</p>
-				))
-			}
-		</div>
+      <h1>Child Component</h1>
+      {
+	data?.map(i => (
+	  <p key={i.id}>{i.title}</p>
+	))
+      }
+    </div>
+  )
+}
+
+const PreloadDemo = () => {
+  const [show, setShow] = useState(false)
+  const [prefetchData, setPrefetchData] = useState([])
+  const config = useSWRConfig()
+
+  /** @name 直接向cache对象中写入数据  */
+  // config.cache.set('https://jsonplaceholder.typicode.com/posts/', {
+  //   data: [{ title: 123, id: 1 }],
+  //   error: false,
+  //   isValidating: false,
+  //   isLoading: false,
+  // })
+
+  const onPreloadData = async () => {
+
+    const prefetchData = await preload(apiKey, fetcher)
+
+    console.log('prefetchData ', prefetchData)
+    setPrefetchData(prefetchData)
+  }
+
+  useEffect(() => {
+    onPreloadData()
+  }, [])
+
+  return (
+    <div>
+      <h1>SWR PRELOAD</h1>
+      <p>
+        <button onClick={() => setShow(!show)}>SHOW CHILD</button>
+      </p>
+
+      {show && <Child prefetchData={prefetchData} />}
+    </div>
   )
 }
 
 export default PreloadDemo
+
 ```
 
 在这个例子中， preload API 在全局作用域中被调用。这意味着我们在组件开始渲染之前就开始预加载资源。 当组件被渲染时，数据可能已经可用。如果它还在进行中，useSWR 钩子将复用那个正在进行的预加载请求，而不是启动一个新的请求。
